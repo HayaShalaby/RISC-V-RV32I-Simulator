@@ -5,6 +5,9 @@
 #include <limits>
 using namespace std;
 
+//add commen
+
+
 int PC; // Program Counter
 int initialPC;
 int reg[32]; // Array of 32 registers
