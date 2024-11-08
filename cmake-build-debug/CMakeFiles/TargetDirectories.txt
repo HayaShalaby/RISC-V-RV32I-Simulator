@@ -1,0 +1,3 @@
+C:/Users/Haya/Desktop/Assembly Project1/RISC-V-RV32I-Simulator/cmake-build-debug/CMakeFiles/RISC_V_RV32I_Simulator.dir
+C:/Users/Haya/Desktop/Assembly Project1/RISC-V-RV32I-Simulator/cmake-build-debug/CMakeFiles/edit_cache.dir
+C:/Users/Haya/Desktop/Assembly Project1/RISC-V-RV32I-Simulator/cmake-build-debug/CMakeFiles/rebuild_cache.dir

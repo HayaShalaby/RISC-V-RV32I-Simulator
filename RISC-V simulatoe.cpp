@@ -2,10 +2,11 @@
 #include <vector>
 #include <string>
 #include <fstream>
+#include <sstream>
 #include <limits>
+#include <cmath>
+#include <cstdlib>
 using namespace std;
-
-//add commen
 
 
 int PC; // Program Counter
@@ -34,9 +35,6 @@ void read_input_from_file(const string& filename) {
     int i = 0;
     int increment = 0;
     while (getline(inputFile, line)) {
-        if (line == "HALT") { // Stop if "HALT" is encountered
-            break;
-        }
         instruction.push_back(line); // Store the instruction
         pair<int, string> x (PC + increment, line);
         memory.push_back(x);
@@ -50,6 +48,22 @@ void read_input_from_file(const string& filename) {
     inputFile.close(); // Close the file
 }
 
+// Finding the value at memory address 'first'
+string memFind(int first){
+    for(int i = 0; i < memory.size(); i++){
+        if(memory[i].first = first)
+            return memory[i].second;
+    }
+}
+
+// Writing the 'second' value to memory at address 'first'
+void memWrite(int first, string second){
+    for(int i = 0; i < memory.size(); i++){
+        if(memory[i].first = first)
+            memory[i].second = second;
+    }
+}
+
 void simulator(int& programcount) {
     string action;
     int i = 0;
@@ -59,6 +73,8 @@ void simulator(int& programcount) {
         action = "";
         string rd = "";
         string imm = "";
+        string rs2 = "";
+        string rs1 = "";
 
         // Extract the action (instruction) part
         for (int j = 0; j < instruction[i].size(); j++) {
@@ -69,7 +85,7 @@ void simulator(int& programcount) {
         }
 
         cout << action << endl;
-        if (action == "ecall")
+        if (action == "ECALL" or action == "EBREAK" or action == "PAUSE" or action == "FENCE" or action == "FENCE.TSO")
         {
             return;
         }
@@ -200,6 +216,478 @@ void simulator(int& programcount) {
             // Update loop index based on new PC value
             i = (PC - initialPC) / 4 ;
         }
+
+        // Load half-word unsigned
+        else if(action == "LHU"){
+            int rdIndex, rs1Index;
+            int offset;
+
+            size_t pos = instruction[i].find(" ");
+            if (pos != string::npos) {
+                // Parsing rd by locating the first space character in the string
+                rd = instruction[i].substr(pos + 1, instruction[i].find(",", pos) - pos - 1);
+
+                // Parsing offset
+                size_t pos2 = instruction[i].find(",");
+                imm = instruction[i].substr(pos2 + 1, instruction[i].find("(", pos2) - pos2 - 1);
+
+                // Parsing rs1 by locating the first open bracket in the string and extracting the register
+                size_t pos3 = instruction[i].find("(");
+                string X = instruction[i].substr(pos3 + 1, instruction[i].find(")") - pos3 - 1).substr(1);
+                if (X.length() == 3)
+                {
+                    X = X.erase(0, 1);
+                }
+                rs1Index = stoi(X);
+            }
+
+            // Convert `rd` to register index (assuming rd is in the form "x0", "x1", etc.)
+            rdIndex = stoi(rd.substr(1)); // Convert "x1" to 1, "x2" to 2, etc.
+
+            // Convert `offset` (string) to an integer directly as decimal
+            offset = stoi(imm); // Treat the input as a decimal value
+            cout << offset << " " << rs1Index << " " << reg[rs1Index];
+
+            // Getting the value desired in memory at the memory address rs1 + offset
+            string loadValue = memFind(reg[rs1Index + offset]);
+
+            // Get LS 16 bits from the load value
+            int loadHW = stoi(loadValue) & 0xFFFF;
+
+            // Loading the value into memory address at rd
+            memWrite(reg[rdIndex], to_string(loadHW));
+            cout << "Value " << loadValue << " written in memeory address at register " << reg[rdIndex] <<endl;
+
+            // Increment program counter & i to point to next instruction
+            i++;
+            PC += 4;
+        }
+
+        else if(action == "SB"){
+            int rdIndex, rs1Index;
+            int offset;
+
+            size_t pos = instruction[i].find(" ");
+            if (pos != string::npos) {
+                // Parsing rs1 by locating the first space character in the string
+                rs1 = instruction[i].substr(pos + 1, instruction[i].find(",", pos) - pos - 1);
+
+                // Parsing offset
+                size_t pos2 = instruction[i].find(",");
+                imm = instruction[i].substr(pos2 + 1, instruction[i].find("(", pos2) - pos2 - 1);
+
+                // Parsing rd by locating the first open bracket in the string and extracting the register
+                size_t pos3 = instruction[i].find("(");
+                string rd = instruction[i].substr(pos3 + 1, instruction[i].find(")") - pos3 - 1).substr(1);
+                if (rd.length() == 3)
+                {
+                    rd = rd.erase(0, 1);
+                }
+                rdIndex = stoi(rd);
+            }
+
+            // Convert `rs1` to register index (assuming rs1 is in the form "x0", "x1", etc.)
+            rs1Index = stoi(rs1.substr(1)); // Convert "x1" to 1, "x2" to 2, etc.
+
+            // Convert `offset` (string) to an integer directly as decimal
+            offset = stoi(imm); // Treat the input as a decimal value
+            cout << offset << " " << rdIndex << " " << reg[rdIndex];
+
+            // Getting the LS byte from register value
+            int byte = reg[rs1Index] & 0xFF;
+
+            // Storing the value into memory address at rd
+            memWrite(reg[rdIndex + offset], to_string(byte));
+            cout << "Value " << byte << " stored in memory address at register " << reg[rdIndex + offset] <<endl;
+
+            // Increment program counter to point to next instruction
+            PC++;
+        }
+
+        else if(action == "SH"){
+            int rdIndex, rs1Index;
+            int offset;
+
+            size_t pos = instruction[i].find(" ");
+            if (pos != string::npos) {
+                // Parsing rs1 by locating the first space character in the string
+                rs1 = instruction[i].substr(pos + 1, instruction[i].find(",", pos) - pos - 1);
+
+                // Parsing offset
+                size_t pos2 = instruction[i].find(",");
+                imm = instruction[i].substr(pos2 + 1, instruction[i].find("(", pos2) - pos2 - 1);
+
+                // Parsing rd by locating the first open bracket in the string and extracting the register
+                size_t pos3 = instruction[i].find("(");
+                string rd = instruction[i].substr(pos3 + 1, instruction[i].find(")") - pos3 - 1).substr(1);
+                if (rd.length() == 3)
+                {
+                    rd = rd.erase(0, 1);
+                }
+                rdIndex = stoi(rd);
+            }
+
+            // Convert `rs1` to register index (assuming rs1 is in the form "x0", "x1", etc.)
+            rs1Index = stoi(rs1.substr(1)); // Convert "x1" to 1, "x2" to 2, etc.
+
+            // Convert `offset` (string) to an integer directly as decimal
+            offset = stoi(imm); // Treat the input as a decimal value
+            cout << offset << " " << rdIndex << " " << reg[rdIndex];
+
+            // Getting the LS halfword from register value
+            int hw = reg[rs1Index] & 0xFFFF;
+
+            // Storing the value into memory address at rd
+            memWrite(reg[rdIndex + offset], to_string(hw));
+            cout << "Value " << hw << " stored in memory address at register " << reg[rdIndex + offset] <<endl;
+
+            // Increment program counter to point to next instruction
+            PC++;
+        }
+
+        else if(action == "SW"){
+            int rdIndex, rs1Index;
+            int offset;
+
+            size_t pos = instruction[i].find(" ");
+            if (pos != string::npos) {
+                // Parsing rs1 by locating the first space character in the string
+                rs1 = instruction[i].substr(pos + 1, instruction[i].find(",", pos) - pos - 1);
+
+                // Parsing offset
+                size_t pos2 = instruction[i].find(",");
+                imm = instruction[i].substr(pos2 + 1, instruction[i].find("(", pos2) - pos2 - 1);
+
+                // Parsing rd by locating the first open bracket in the string and extracting the register
+                size_t pos3 = instruction[i].find("(");
+                string rd = instruction[i].substr(pos3 + 1, instruction[i].find(")") - pos3 - 1).substr(1);
+                if (rd.length() == 3)
+                {
+                    rd = rd.erase(0, 1);
+                }
+                rdIndex = stoi(rd);
+            }
+
+            // Convert `rs1` to register index (assuming rs1 is in the form "x0", "x1", etc.)
+            rs1Index = stoi(rs1.substr(1)); // Convert "x1" to 1, "x2" to 2, etc.
+
+            // Convert `offset` (string) to an integer directly as decimal
+            offset = stoi(imm); // Treat the input as a decimal value
+            cout << offset << " " << rdIndex << " " << reg[rdIndex];
+
+            // Storing the value into memory address at rd
+            memWrite(reg[rdIndex + offset], to_string(reg[rs1Index]));
+            cout << "Value " << reg[rs1Index] << " stored in memory address at register " << reg[rdIndex + offset] <<endl;
+
+            // Increment program counter to point to next instruction
+            PC++;
+        }
+
+        else if(action == "ADDI"){
+            int rdIndex, rs1Index;
+            int immediateValue;
+
+            // Parse `rd`, `rs1`, and `imm` from the instruction
+            size_t pos = instruction[i].find(" ");
+            if (pos != string::npos) {
+                rd = instruction[i].substr(pos + 1, instruction[i].find(",", pos) - pos - 1);
+
+                // Find `rs1` by locating the second comma and extracting the register
+                size_t pos2 = instruction[i].find(",", pos + 1);
+                string X= instruction[i].substr(pos2 + 1, instruction[i].find(",", pos2 + 1) - pos2 - 1).substr(1);
+                if (X.length() == 3)
+                {
+                    X = X.erase(0, 1);
+                }
+                rs1Index = stoi(X);
+
+                // Extract `imm` after the last comma
+                imm = instruction[i].substr(instruction[i].rfind(",") + 1);
+            }
+
+            // Convert `rd` to register index (assuming rd is in the form "x0", "x1", etc.)
+            rdIndex = stoi(rd.substr(1)); // Convert "x1" to 1, "x2" to 2, etc.
+
+            // Convert `imm` (string) to an integer directly as decimal
+            immediateValue = stoi(imm); // Treat the input as a decimal value
+            cout << immediateValue << " " << rs1Index << " " << reg[rs1Index];
+
+            // Perform the calculation
+            reg[rdIndex] = reg[rs1Index] + immediateValue;
+            cout << "Value " << reg[rdIndex] << " written in register " << rdIndex <<endl;
+
+            // Increment program counter to point to next instruction
+            PC++;
+        }
+
+        else if(action == "SLTI"){
+            int rdIndex, rs1Index;
+            int immediateValue;
+
+            // Parse `rd`, `rs1`, and `imm` from the instruction
+            size_t pos = instruction[i].find(" ");
+            if (pos != string::npos) {
+                rd = instruction[i].substr(pos + 1, instruction[i].find(",", pos) - pos - 1);
+
+                // Find `rs1` by locating the second comma and extracting the register
+                size_t pos2 = instruction[i].find(",", pos + 1);
+                string X= instruction[i].substr(pos2 + 1, instruction[i].find(",", pos2 + 1) - pos2 - 1).substr(1);
+                if (X.length() == 3)
+                {
+                    X = X.erase(0, 1);
+                }
+                rs1Index = stoi(X);
+
+                // Extract `imm` after the last comma
+                imm = instruction[i].substr(instruction[i].rfind(",") + 1);
+            }
+
+            // Convert `rd` to register index (assuming rd is in the form "x0", "x1", etc.)
+            rdIndex = stoi(rd.substr(1)); // Convert "x1" to 1, "x2" to 2, etc.
+
+            // Convert `imm` (string) to an integer directly as decimal
+            immediateValue = stoi(imm); // Treat the input as a decimal value
+            cout << immediateValue << " " << rs1Index << " " << reg[rs1Index];
+
+            // Perform the calculation
+            if(reg[rs1Index] < immediateValue)
+                reg[rdIndex] = 1;
+            else
+                reg[rdIndex] = 0;
+
+            cout << "Register " << rdIndex << " set to " << reg[rdIndex] <<endl;
+
+            // Increment program counter to point to next instruction
+            PC++;
+        }
+
+        else if(action == "SLTIU"){
+            int rdIndex, rs1Index;
+            int immediateValue;
+
+            // Parse `rd`, `rs1`, and `imm` from the instruction
+            size_t pos = instruction[i].find(" ");
+            if (pos != string::npos) {
+                rd = instruction[i].substr(pos + 1, instruction[i].find(",", pos) - pos - 1);
+
+                // Find `rs1` by locating the second comma and extracting the register
+                size_t pos2 = instruction[i].find(",", pos + 1);
+                string X= instruction[i].substr(pos2 + 1, instruction[i].find(",", pos2 + 1) - pos2 - 1).substr(1);
+                if (X.length() == 3)
+                {
+                    X = X.erase(0, 1);
+                }
+                rs1Index = stoi(X);
+
+                // Extract `imm` after the last comma
+                imm = instruction[i].substr(instruction[i].rfind(",") + 1);
+            }
+
+            // Convert `rd` to register index (assuming rd is in the form "x0", "x1", etc.)
+            rdIndex = stoi(rd.substr(1)); // Convert "x1" to 1, "x2" to 2, etc.
+
+            // Convert `imm` (string) to an integer directly as decimal
+            immediateValue = stoi(imm); // Treat the input as a decimal value
+            cout << immediateValue << " " << rs1Index << " " << reg[rs1Index];
+
+            // Perform the calculation
+            if(abs(reg[rs1Index]) < abs(immediateValue))
+                reg[rdIndex] = 1;
+            else
+                reg[rdIndex] = 0;
+
+            cout << "Register " << rdIndex << " set to " << reg[rdIndex] <<endl;
+
+            // Increment program counter to point to next instruction
+            PC++;
+        }
+
+        else if(action == "XORI"){
+            int rdIndex, rs1Index;
+            int immediateValue;
+
+            // Parse `rd`, `rs1`, and `imm` from the instruction
+            size_t pos = instruction[i].find(" ");
+            if (pos != string::npos) {
+                rd = instruction[i].substr(pos + 1, instruction[i].find(",", pos) - pos - 1);
+
+                // Find `rs1` by locating the second comma and extracting the register
+                size_t pos2 = instruction[i].find(",", pos + 1);
+                string X= instruction[i].substr(pos2 + 1, instruction[i].find(",", pos2 + 1) - pos2 - 1).substr(1);
+                if (X.length() == 3)
+                {
+                    X = X.erase(0, 1);
+                }
+                rs1Index = stoi(X);
+
+                // Extract `imm` after the last comma
+                imm = instruction[i].substr(instruction[i].rfind(",") + 1);
+            }
+
+            // Convert `rd` to register index (assuming rd is in the form "x0", "x1", etc.)
+            rdIndex = stoi(rd.substr(1)); // Convert "x1" to 1, "x2" to 2, etc.
+
+            // Convert `imm` (string) to an integer directly as decimal
+            immediateValue = stoi(imm); // Treat the input as a decimal value
+            cout << immediateValue << " " << rs1Index << " " << reg[rs1Index];
+
+            // Perform the calculation
+            reg[rdIndex] = reg[rs1Index] ^ immediateValue;
+            cout << "Value " << reg[rdIndex] << " written in register " << rdIndex <<endl;
+
+            // Increment program counter to point to next instruction
+            PC++;
+        }
+
+        else if(action == "ORI"){
+            int rdIndex, rs1Index;
+            int immediateValue;
+
+            // Parse `rd`, `rs1`, and `imm` from the instruction
+            size_t pos = instruction[i].find(" ");
+            if (pos != string::npos) {
+                rd = instruction[i].substr(pos + 1, instruction[i].find(",", pos) - pos - 1);
+
+                // Find `rs1` by locating the second comma and extracting the register
+                size_t pos2 = instruction[i].find(",", pos + 1);
+                string X= instruction[i].substr(pos2 + 1, instruction[i].find(",", pos2 + 1) - pos2 - 1).substr(1);
+                if (X.length() == 3)
+                {
+                    X = X.erase(0, 1);
+                }
+                rs1Index = stoi(X);
+
+                // Extract `imm` after the last comma
+                imm = instruction[i].substr(instruction[i].rfind(",") + 1);
+            }
+
+            // Convert `rd` to register index (assuming rd is in the form "x0", "x1", etc.)
+            rdIndex = stoi(rd.substr(1)); // Convert "x1" to 1, "x2" to 2, etc.
+
+            // Convert `imm` (string) to an integer directly as decimal
+            immediateValue = stoi(imm); // Treat the input as a decimal value
+            cout << immediateValue << " " << rs1Index << " " << reg[rs1Index];
+
+            // Perform the calculation
+            reg[rdIndex] = reg[rs1Index] | immediateValue;
+            cout << "Value " << reg[rdIndex] << " written in register " << rdIndex <<endl;
+
+            // Increment program counter to point to next instruction
+            PC++;
+
+        }
+
+        else if(action == "ANDI"){
+            int rdIndex, rs1Index;
+            int immediateValue;
+
+            // Parse `rd`, `rs1`, and `imm` from the instruction
+            size_t pos = instruction[i].find(" ");
+            if (pos != string::npos) {
+                rd = instruction[i].substr(pos + 1, instruction[i].find(",", pos) - pos - 1);
+
+                // Find `rs1` by locating the second comma and extracting the register
+                size_t pos2 = instruction[i].find(",", pos + 1);
+                string X= instruction[i].substr(pos2 + 1, instruction[i].find(",", pos2 + 1) - pos2 - 1).substr(1);
+                if (X.length() == 3)
+                {
+                    X = X.erase(0, 1);
+                }
+                rs1Index = stoi(X);
+
+                // Extract `imm` after the last comma
+                imm = instruction[i].substr(instruction[i].rfind(",") + 1);
+            }
+
+            // Convert `rd` to register index (assuming rd is in the form "x0", "x1", etc.)
+            rdIndex = stoi(rd.substr(1)); // Convert "x1" to 1, "x2" to 2, etc.
+
+            // Convert `imm` (string) to an integer directly as decimal
+            immediateValue = stoi(imm); // Treat the input as a decimal value
+            cout << immediateValue << " " << rs1Index << " " << reg[rs1Index];
+
+            // Perform the calculation
+            reg[rdIndex] = reg[rs1Index] & immediateValue;
+            cout << "Value " << reg[rdIndex] << " written in register " << rdIndex <<endl;
+
+            // Increment program counter to point to next instruction
+            PC++;
+        }
+
+        else if(action == "SLLI"){
+            int rdIndex, rs1Index;
+            int shftAmt;
+
+            // Parse `rd`, `rs1`, and `imm` from the instruction
+            size_t pos = instruction[i].find(" ");
+            if (pos != string::npos) {
+                rd = instruction[i].substr(pos + 1, instruction[i].find(",", pos) - pos - 1);
+
+                // Find `rs1` by locating the second comma and extracting the register
+                size_t pos2 = instruction[i].find(",", pos + 1);
+                string X= instruction[i].substr(pos2 + 1, instruction[i].find(",", pos2 + 1) - pos2 - 1).substr(1);
+                if (X.length() == 3)
+                {
+                    X = X.erase(0, 1);
+                }
+                rs1Index = stoi(X);
+
+                // Extract `imm` after the last comma
+                imm = instruction[i].substr(instruction[i].rfind(",") + 1);
+            }
+
+            // Convert `rd` to register index (assuming rd is in the form "x0", "x1", etc.)
+            rdIndex = stoi(rd.substr(1)); // Convert "x1" to 1, "x2" to 2, etc.
+
+            // Convert `imm` (string) to an integer directly as decimal
+            shftAmt = stoi(imm); // Treat the input as a decimal value
+            cout << shftAmt << " " << rs1Index << " " << reg[rs1Index];
+
+            // Perform the calculation
+            reg[rdIndex] = reg[rs1Index] * (pow(2, shftAmt));
+            cout << "Value " << reg[rdIndex] << " written in register " << rdIndex <<endl;
+
+            // Increment program counter to point to next instruction
+            PC++;
+        }
+
+        else if(action == "SRLI"){
+            int rdIndex, rs1Index;
+            int shftAmt;
+
+            // Parse `rd`, `rs1`, and `imm` from the instruction
+            size_t pos = instruction[i].find(" ");
+            if (pos != string::npos) {
+                rd = instruction[i].substr(pos + 1, instruction[i].find(",", pos) - pos - 1);
+
+                // Find `rs1` by locating the second comma and extracting the register
+                size_t pos2 = instruction[i].find(",", pos + 1);
+                string X= instruction[i].substr(pos2 + 1, instruction[i].find(",", pos2 + 1) - pos2 - 1).substr(1);
+                if (X.length() == 3)
+                {
+                    X = X.erase(0, 1);
+                }
+                rs1Index = stoi(X);
+
+                // Extract `imm` after the last comma
+                imm = instruction[i].substr(instruction[i].rfind(",") + 1);
+            }
+
+            // Convert `rd` to register index (assuming rd is in the form "x0", "x1", etc.)
+            rdIndex = stoi(rd.substr(1)); // Convert "x1" to 1, "x2" to 2, etc.
+
+            // Convert `imm` (string) to an integer directly as decimal
+            shftAmt = stoi(imm); // Treat the input as a decimal value
+            cout << shftAmt << " " << rs1Index << " " << reg[rs1Index];
+
+            // Perform the calculation
+            reg[rdIndex] = reg[rs1Index] / (pow(2, shftAmt));
+            cout << "Value " << reg[rdIndex] << " written in register " << rdIndex <<endl;
+
+            // Increment program counter to point to next instruction
+            PC++;
+        }
+
 
 
         // Add additional instructions here as needed
