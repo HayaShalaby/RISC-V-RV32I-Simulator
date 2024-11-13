@@ -1,0 +1,15 @@
+LUI x1,10
+LUI x2,5
+ADDI x3,x0,0
+ADDI x4,x0,0
+ADDI x5,x0,0
+ADDI x6,x0,0
+ADDI x7,x0,3
+BGEU x6,x7,28
+BLTU x1,x2,24
+OR x3,x1,x2
+SLLI x4,x3,1
+SLTU x5,x4,x1
+ADDI x6,x6,1
+BEQ x0,x0,-24
+ECALL

@@ -1,0 +1,11 @@
+LI x1,12
+LI x2,5
+ADD x3,x1,x2
+SUB x4,x1,x2
+SLT x5,x1,x2
+OR x6,x1,x2
+SLLI x7,x1,1
+XOR x8,x4,x6
+SRAI x9,x1,3
+SRLI x10,x2,4
+EBREAK
