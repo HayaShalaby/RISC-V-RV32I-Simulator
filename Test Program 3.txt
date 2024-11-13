@@ -1,0 +1,51 @@
+# LOAD HALFWORD UNSIGNED (LHU)
+LI X6, 0          # Load address of `result` (assumed to be at memory address 0) into X6
+LI X5, 305419896  # Load decimal value (equivalent to 0x12345678) into X5
+SH X5, 0(X6)      # Store halfword from X5 at address stored in X6
+LHU X7, 0(X6)     # Load the halfword into X7
+
+# STORE BYTE (SB)
+LI X8, 255        # Load a byte value (255) into X8
+SB X8, 1(X6)      # Store byte value at offset 1 of the address in X6
+
+# STORE HALFWORD (SH)
+LI X9, 43690      # Load halfword value (decimal 43690, equivalent to 0xAAAA) into X9
+SH X9, 2(X6)      # Store halfword at offset 2 of the address in X6
+
+# STORE WORD (SW)
+LI X10, 305419896 # Load a word value (305419896) into X10
+SW X10, 0(X6)     # Store the word at address in X6
+
+# ADD IMMEDIATE (ADDI)
+LI X11, 5         # Load value 5 into X11
+ADDI X12, X11, 10 # Add 10 to X11 and store in X12 (should be 15)
+
+# SET LESS THAN IMMEDIATE (SLTI)
+LI X13, 8         # Load value 8 into X13
+SLTI X14, X13, 10 # X14 = 1 if X13 < 10, otherwise 0
+
+# SET LESS THAN IMMEDIATE UNSIGNED (SLTIU)
+LI X15, 4294901760 # Large unsigned value (equivalent to 0xFFFF0000)
+SLTIU X16, X15, 10 # X16 = 0 since X15 > 10 (unsigned comparison)
+
+# XOR IMMEDIATE (XORI)
+LI X17, 10        # Load value 10 into X17
+XORI X18, X17, 12 # XOR X17 with 12 and store in X18
+
+# OR IMMEDIATE (ORI)
+LI X19, 3         # Load value 3 into X19
+ORI X20, X19, 5   # OR X19 with 5 and store in X20
+
+# AND IMMEDIATE (ANDI)
+LI X21, 255       # Load value 255 into X21
+ANDI X22, X21, 15 # AND X21 with 15 and store in X22
+
+# SHIFT LEFT LOGICAL IMMEDIATE (SLLI)
+LI X23, 1         # Load value 1 into X23
+SLLI X24, X23, 3  # Shift X23 left by 3 bits and store in X24
+
+# SHIFT RIGHT LOGICAL IMMEDIATE (SRLI)
+LI X25, 16        # Load value 16 into X25
+SRLI X26, X25, 2  # Shift X25 right by 2 bits and store in X26
+
+ECALL
